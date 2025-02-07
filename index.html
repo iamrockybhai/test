@@ -82,26 +82,77 @@
   </div>
 
   <script>
+    // Global variables for GPS watch and timeout
     let gpsWatchId = null;
     let gpsTimeout = null;
 
-    function showErrorPopup(message) { /* ... */ }
-    function closePopup() { /* ... */ }
+    // Displays an error popup
+    function showErrorPopup(message) {
+      document.getElementById("error-message").innerText = message;
+      document.getElementById("error-popup").style.display = "block";
+    }
 
-    function updateStatus(locationAllowed, gpsStatus) { /* ... */ }
+    // Closes the error popup
+    function closePopup() {
+      document.getElementById("error-popup").style.display = "none";
+    }
 
+    // Updates the UI for both Location Access and GPS status.
+    // gpsStatus can be: 'loading', true (enabled), or false (not enabled)
+    function updateStatus(locationAllowed, gpsStatus) {
+      const locationElement = document.getElementById("location-status");
+      const gpsElement = document.getElementById("gps-status");
+
+      // Update Location Access status
+      if (locationAllowed) {
+        locationElement.querySelector(".icon").className = "icon tick";
+        locationElement.querySelector(".icon").innerText = "✔️";
+        locationElement.children[1].innerText = "Location Access Allowed";
+      } else {
+        locationElement.querySelector(".icon").className = "icon cross";
+        locationElement.querySelector(".icon").innerText = "❌";
+        locationElement.children[1].innerText = "Location Access Not Allowed";
+      }
+
+      // Update GPS status
+      if (gpsStatus === "loading") {
+        gpsElement.querySelector(".icon").className = "icon loading";
+        gpsElement.querySelector(".icon").innerText = "⏳";
+        gpsElement.children[1].innerText = "Checking GPS...";
+      } else if (gpsStatus === true) {
+        gpsElement.querySelector(".icon").className = "icon tick";
+        gpsElement.querySelector(".icon").innerText = "✔️";
+        gpsElement.children[1].innerText = "GPS Enabled";
+      } else {
+        gpsElement.querySelector(".icon").className = "icon cross";
+        gpsElement.querySelector(".icon").innerText = "❌";
+        gpsElement.children[1].innerText = "GPS Not Enabled";
+      }
+    }
+
+    // Starts a continuous watch on GPS updates.
     function startGPSWatch() {
       if ("geolocation" in navigator) {
+        // Set initial GPS status to "loading"
         updateStatus(true, "loading");
+
+        // Start watching for position updates
         gpsWatchId = navigator.geolocation.watchPosition(
-          (position) => {
+          function (position) {
+            console.log("GPS position update:", position);
+            // GPS is working; update status
+            updateStatus(true, true);
+            // Reset the timeout: if no new update arrives in 5 seconds, mark GPS as not enabled.
             if (gpsTimeout) clearTimeout(gpsTimeout);
-            gpsTimeout = setTimeout(() => {
+            gpsTimeout = setTimeout(function () {
+              console.log("No GPS update in 5 seconds, marking as not enabled");
               updateStatus(true, false);
             }, 5000);
-            updateStatus(true, true);
           },
-          (error) => {
+          function (error) {
+            console.log("GPS error callback:", error);
+            // An error (or loss of signal) means GPS is not enabled.
+            // Do not affect location access status here.
             updateStatus(true, false);
           },
           { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
@@ -111,20 +162,26 @@
       }
     }
 
+    // Checks for location permission and triggers the permission prompt if needed.
     function checkLocationPermission() {
       if ("permissions" in navigator) {
-        navigator.permissions.query({ name: "geolocation" }).then((permissionStatus) => {
+        navigator.permissions.query({ name: "geolocation" }).then(function (permissionStatus) {
           if (permissionStatus.state === "granted") {
+            console.log("Location permission granted");
             updateStatus(true, "loading");
             startGPSWatch();
           } else if (permissionStatus.state === "prompt") {
+            console.log("Location permission prompt. Triggering permission request.");
+            // Trigger the prompt by calling getCurrentPosition.
             navigator.geolocation.getCurrentPosition(
-              (position) => {
+              function (position) {
+                console.log("User granted location permission", position);
                 updateStatus(true, "loading");
                 startGPSWatch();
               },
-              (error) => {
-                // Handle permission denial vs GPS errors
+              function (error) {
+                console.log("User denied location permission or error", error);
+                // Differentiate between permission denial and GPS errors
                 if (error.code === error.PERMISSION_DENIED) {
                   updateStatus(false, false);
                 } else {
@@ -133,12 +190,15 @@
               },
               { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
             );
-          } else {
+          } else if (permissionStatus.state === "denied") {
+            console.log("Location permission denied");
             updateStatus(false, false);
           }
 
-          permissionStatus.onchange = () => {
-            if (permissionStatus.state === "granted") {
+          // Listen for any changes in permission status
+          permissionStatus.onchange = function () {
+            console.log("Permission changed to:", this.state);
+            if (this.state === "granted") {
               updateStatus(true, "loading");
               startGPSWatch();
             } else {
@@ -147,13 +207,15 @@
           };
         });
       } else {
-        // Fallback for browsers without Permissions API
+        // Fallback if Permissions API is not supported: call getCurrentPosition to trigger the prompt.
         navigator.geolocation.getCurrentPosition(
-          (position) => {
+          function (position) {
+            console.log("User granted location permission", position);
             updateStatus(true, "loading");
             startGPSWatch();
           },
-          (error) => {
+          function (error) {
+            console.log("User denied location permission or error", error);
             // Differentiate between permission denial and GPS errors
             if (error.code === error.PERMISSION_DENIED) {
               updateStatus(false, false);
@@ -166,6 +228,7 @@
       }
     }
 
+    // Attach the check to the button click.
     document.getElementById("start-button").addEventListener("click", checkLocationPermission);
   </script>
 </body>
