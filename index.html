@@ -28,37 +28,34 @@
       cursor: pointer;
       font-weight: bold;
     }
-    
-    /* Progress List Styles */
+    /* List (Progress) Styles */
     ul {
       list-style-type: none;
       padding: 0;
-      max-width: 500px;
-      margin: 30px auto;
     }
     li {
       margin: 10px 0;
       font-size: 18px;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
       display: flex;
       align-items: center;
     }
-    .icon {
-      margin-right: 15px;
-      font-size: 24px;
-      width: 30px;
-      text-align: center;
+    li span.icon {
+      margin-right: 10px;
+      font-size: 20px;
     }
-    .tick { color: green; }
-    .cross { color: red; }
-    .loading { color: orange; }
-    
+    .tick {
+      color: green;
+    }
+    .cross {
+      color: red;
+    }
+    .loading {
+      color: orange;
+    }
     /* Button Style */
     #start-button {
       display: block;
-      margin: 30px auto;
+      margin: 50px auto;
       padding: 15px 30px;
       font-size: 18px;
       cursor: pointer;
@@ -66,16 +63,16 @@
   </style>
 </head>
 <body>
-  <button id="start-button">Start Speedometer Progress</button>
+  <button id="start-button">Start Speedometer</button>
 
   <ul>
     <li id="location-status">
-      <span class="icon cross" id="location-icon">❌</span>
-      <span id="location-label">Step 1: Please allow location access.</span>
+      <span id="location-icon" class="icon cross">❌</span>
+      <span id="location-text">Step 1: Please allow location access in your browser</span>
     </li>
     <li id="gps-status">
-      <span class="icon cross" id="gps-icon">❌</span>
-      <span id="gps-label">Step 2: Please enable your device's GPS.</span>
+      <span id="gps-icon" class="icon cross">❌</span>
+      <span id="gps-text">Step 2: Please enable GPS on your device</span>
     </li>
   </ul>
 
@@ -85,10 +82,47 @@
   </div>
 
   <script>
-    // We'll use this interval to re-check progress every 3 seconds.
-    let progressIntervalId = null;
+    // Global variable for our interval timer
+    let progressInterval = null;
 
-    // Display an error popup (if needed).
+    // --- UI Update Functions ---
+
+    // Updates the location access UI with a professional label.
+    function updateLocationStatus(allowed) {
+      const icon = document.getElementById("location-icon");
+      const text = document.getElementById("location-text");
+      if (allowed) {
+        icon.className = "icon tick";
+        icon.innerText = "✔️";
+        text.innerText = "Step 1: Location Access Allowed.";
+      } else {
+        icon.className = "icon cross";
+        icon.innerText = "❌";
+        text.innerText = "Step 1: Please allow location access in your browser.";
+      }
+    }
+
+    // Updates the GPS UI with a professional label.
+    // status can be "loading", true (enabled), or false (not enabled)
+    function updateGPSStatus(status) {
+      const icon = document.getElementById("gps-icon");
+      const text = document.getElementById("gps-text");
+      if (status === "loading") {
+        icon.className = "icon loading";
+        icon.innerText = "⏳";
+        text.innerText = "Step 2: Checking if GPS is enabled...";
+      } else if (status === true) {
+        icon.className = "icon tick";
+        icon.innerText = "✔️";
+        text.innerText = "Step 2: GPS Enabled.";
+      } else {
+        icon.className = "icon cross";
+        icon.innerText = "❌";
+        text.innerText = "Step 2: Please enable GPS on your device.";
+      }
+    }
+
+    // --- Error Popup ---
     function showErrorPopup(message) {
       document.getElementById("error-message").innerText = message;
       document.getElementById("error-popup").style.display = "block";
@@ -97,104 +131,49 @@
       document.getElementById("error-popup").style.display = "none";
     }
 
-    // Update the location progress display.
-    // allowed: true if permission granted, false otherwise.
-    function updateLocationStatus(allowed) {
-      const icon = document.getElementById("location-icon");
-      const label = document.getElementById("location-label");
-      if (allowed) {
-        icon.className = "icon tick";
-        icon.innerText = "✔️";
-        label.innerText = "Step 1: Location access granted.";
+    // --- Status Check Functions ---
+
+    // Check the current location permission state (without prompting) and update UI.
+    function checkLocationState() {
+      if ("permissions" in navigator) {
+        navigator.permissions.query({ name: "geolocation" }).then(function (ps) {
+          updateLocationStatus(ps.state === "granted");
+        });
       } else {
-        icon.className = "icon cross";
-        icon.innerText = "❌";
-        label.innerText = "Step 1: Please allow location access in your browser settings.";
+        // Fallback if Permissions API is not available
+        updateLocationStatus(false);
       }
     }
 
-    // Update the GPS progress display.
-    // status can be "loading", true (enabled), or false (not enabled).
-    function updateGPSStatus(status) {
-      const icon = document.getElementById("gps-icon");
-      const label = document.getElementById("gps-label");
-      if (status === "loading") {
-        icon.className = "icon loading";
-        icon.innerText = "⏳";
-        label.innerText = "Step 2: Checking GPS... Please enable your device's GPS if not already.";
-      } else if (status === true) {
-        icon.className = "icon tick";
-        icon.innerText = "✔️";
-        label.innerText = "Step 2: GPS is enabled.";
-      } else {
-        icon.className = "icon cross";
-        icon.innerText = "❌";
-        label.innerText = "Step 2: GPS is not enabled. Please enable your device's GPS.";
-      }
-    }
-
-    // This function checks both the location permission and GPS status.
-    function checkProgress() {
-      // First, check location permission using the Permissions API (if available).
-      if (navigator.permissions) {
-        navigator.permissions.query({ name: 'geolocation' })
-          .then(permissionStatus => {
-            if (permissionStatus.state === "granted") {
-              updateLocationStatus(true);
-              // Check GPS by attempting to get a position.
-              navigator.geolocation.getCurrentPosition(
-                function (position) {
-                  updateGPSStatus(true);
-                },
-                function (error) {
-                  updateGPSStatus(false);
-                },
-                { enableHighAccuracy: true, timeout: 2000 }
-              );
-            } else if (permissionStatus.state === "prompt") {
-              updateLocationStatus(false);
-              updateGPSStatus(false);
-              // Also trigger the prompt if needed.
-              navigator.geolocation.getCurrentPosition(
-                function (position) {
-                  updateLocationStatus(true);
-                },
-                function (error) {
-                  updateLocationStatus(false);
-                },
-                { enableHighAccuracy: true, timeout: 2000 }
-              );
-            } else if (permissionStatus.state === "denied") {
-              updateLocationStatus(false);
-              updateGPSStatus(false);
-            }
-          });
-      } else {
-        // Fallback if Permissions API is not supported.
-        navigator.geolocation.getCurrentPosition(
-          function (position) {
-            updateLocationStatus(true);
-            updateGPSStatus(true);
-          },
-          function (error) {
-            updateLocationStatus(false);
+    // Check GPS state by attempting to get the current position with a short timeout.
+    function checkGPSState() {
+      if ("permissions" in navigator) {
+        navigator.permissions.query({ name: "geolocation" }).then(function (ps) {
+          if (ps.state === "granted") {
+            navigator.geolocation.getCurrentPosition(
+              function (position) {
+                updateGPSStatus(true);
+              },
+              function (error) {
+                updateGPSStatus(false);
+              },
+              { enableHighAccuracy: true, maximumAge: 0, timeout: 3000 }
+            );
+          } else {
             updateGPSStatus(false);
-          },
-          { enableHighAccuracy: true, timeout: 2000 }
-        );
+          }
+        });
+      } else {
+        updateGPSStatus(false);
       }
     }
 
-    // When the user clicks the button, we want to:
-    // 1. Explicitly trigger the location prompt.
-    // 2. Start an interval to re-check the progress every 3 seconds.
-    function startProgressCheck() {
-      // Clear any previous progress interval.
-      if (progressIntervalId) {
-        clearInterval(progressIntervalId);
-      }
-      
-      // Trigger the location permission prompt.
+    // --- Main Process Function ---
+
+    // Called when the user clicks the button.
+    // It forces a prompt for location access and then starts checking progress every 3 seconds.
+    function startProgress() {
+      // Force a prompt for location by calling getCurrentPosition.
       navigator.geolocation.getCurrentPosition(
         function (position) {
           updateLocationStatus(true);
@@ -204,16 +183,19 @@
           updateLocationStatus(false);
           updateGPSStatus(false);
         },
-        { enableHighAccuracy: true, timeout: 10000 }
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
       );
-      
-      // Immediately check progress.
-      checkProgress();
-      // Then set up an interval to check every 3 seconds.
-      progressIntervalId = setInterval(checkProgress, 3000);
+
+      // Clear any existing interval and start a new 3-second interval to update progress.
+      if (progressInterval) clearInterval(progressInterval);
+      progressInterval = setInterval(function () {
+        checkLocationState();
+        checkGPSState();
+      }, 3000);
     }
 
-    document.getElementById("start-button").addEventListener("click", startProgressCheck);
+    // Attach the process to the button click.
+    document.getElementById("start-button").addEventListener("click", startProgress);
   </script>
 </body>
 </html>
