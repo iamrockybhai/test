@@ -50,8 +50,13 @@
     .cross {
       color: red;
     }
-    .loading {
-      color: orange;
+
+    /* Message Styles */
+    .message {
+      font-style: italic;
+      color: #666;
+      margin-left: 30px;
+      display: block;
     }
 
     /* Button Style */
@@ -62,13 +67,6 @@
       font-size: 18px;
       cursor: pointer;
     }
-
-    /* Progress Label Styles */
-    .progress-label {
-      font-style: italic;
-      color: #666;
-      margin-left: 10px;
-    }
   </style>
 </head>
 <body>
@@ -76,13 +74,14 @@
 
   <ul>
     <li id="location-status">
-      <span class="icon cross">❌</span> Location Access: <span>Not allowed</span>
-      <span class="progress-label">(Please allow location access in your browser settings.)</span>
+      <span class="icon cross">❌</span> Location Access
     </li>
-    <li id="gps-status">
-      <span class="icon cross">❌</span> GPS: <span>Not enabled</span>
-      <span class="progress-label">(Please enable GPS on your device.)</span>
+    <span id="location-message" class="message">Allow Location access in your browser settings.</span>
+
+    <li id="gps-status" style="display: none;">
+      <span class="icon cross">❌</span> Enable GPS
     </li>
+    <span id="gps-message" class="message" style="display: none;">Enable GPS on your device.</span>
   </ul>
 
   <div id="error-popup">
@@ -110,43 +109,43 @@
     function updateStatus(locationAllowed, gpsStatus) {
       const locationElement = document.getElementById("location-status");
       const gpsElement = document.getElementById("gps-status");
+      const locationMessage = document.getElementById("location-message");
+      const gpsMessage = document.getElementById("gps-message");
 
       // Update Location Access status
       if (locationAllowed) {
         locationElement.querySelector(".icon").className = "icon tick";
         locationElement.querySelector(".icon").innerText = "✔️";
-        locationElement.children[1].innerText = "Location Access Allowed";
-        locationElement.querySelector(".progress-label").innerText = "(Location access granted.)";
+        locationMessage.style.display = "none"; // Hide location message
+
+        // Show GPS status and message
+        gpsElement.style.display = "flex";
+        gpsMessage.style.display = "block";
+
+        // Update GPS status
+        if (gpsStatus === true) {
+          gpsElement.querySelector(".icon").className = "icon tick";
+          gpsElement.querySelector(".icon").innerText = "✔️";
+          gpsMessage.style.display = "none"; // Hide GPS message
+        } else {
+          gpsElement.querySelector(".icon").className = "icon cross";
+          gpsElement.querySelector(".icon").innerText = "❌";
+          gpsMessage.style.display = "block"; // Show GPS message
+        }
       } else {
         locationElement.querySelector(".icon").className = "icon cross";
         locationElement.querySelector(".icon").innerText = "❌";
-        locationElement.children[1].innerText = "Location Access Not Allowed";
-        locationElement.querySelector(".progress-label").innerText = "(Please allow location access in your browser settings.)";
-      }
+        locationMessage.style.display = "block"; // Show location message
 
-      // Update GPS status
-      if (gpsStatus === "loading") {
-        gpsElement.querySelector(".icon").className = "icon loading";
-        gpsElement.querySelector(".icon").innerText = "⏳";
-        gpsElement.children[1].innerText = "Checking GPS...";
-        gpsElement.querySelector(".progress-label").innerText = "(Checking GPS status...)";
-      } else if (gpsStatus === true) {
-        gpsElement.querySelector(".icon").className = "icon tick";
-        gpsElement.querySelector(".icon").innerText = "✔️";
-        gpsElement.children[1].innerText = "GPS Enabled";
-        gpsElement.querySelector(".progress-label").innerText = "(GPS is enabled.)";
-      } else {
-        gpsElement.querySelector(".icon").className = "icon cross";
-        gpsElement.querySelector(".icon").innerText = "❌";
-        gpsElement.children[1].innerText = "GPS Not Enabled";
-        gpsElement.querySelector(".progress-label").innerText = "(Please enable GPS on your device.)";
+        // Hide GPS status and message
+        gpsElement.style.display = "none";
+        gpsMessage.style.display = "none";
       }
     }
 
     // Starts a continuous watch on GPS updates.
     function startGPSWatch() {
       if ("geolocation" in navigator) {
-        updateStatus(true, "loading");
         gpsWatchId = navigator.geolocation.watchPosition(
           (position) => {
             if (gpsTimeout) clearTimeout(gpsTimeout);
@@ -165,7 +164,7 @@
       }
     }
 
-    // Checks for location permission and GPS status every 3 seconds.
+    // Checks for location permission and GPS status.
     function checkStatus() {
       if ("permissions" in navigator) {
         navigator.permissions.query({ name: "geolocation" }).then((permissionStatus) => {
