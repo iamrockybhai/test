@@ -70,6 +70,11 @@
       margin-top: 5px;
       margin-left: 30px;
     }
+
+    /* Hide GPS section initially */
+    #gps-status {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -118,26 +123,34 @@
         locationElement.querySelector(".icon").innerText = "✔️";
         locationElement.children[1].innerText = "Location Access Allowed";
         locationElement.querySelector(".message").innerText = ""; // Clear message
+
+        // Show GPS section
+        gpsElement.style.display = "flex";
       } else {
         locationElement.querySelector(".icon").className = "icon cross";
         locationElement.querySelector(".icon").innerText = "❌";
         locationElement.children[1].innerText = "Location Access Not Allowed";
         locationElement.querySelector(".message").innerText =
           "Allow Location access in your browser settings.";
+
+        // Hide GPS section
+        gpsElement.style.display = "none";
       }
 
-      // Update GPS status
-      if (gpsStatus === true) {
-        gpsElement.querySelector(".icon").className = "icon tick";
-        gpsElement.querySelector(".icon").innerText = "✔️";
-        gpsElement.children[1].innerText = "GPS Enabled";
-        gpsElement.querySelector(".message").innerText = ""; // Clear message
-      } else {
-        gpsElement.querySelector(".icon").className = "icon cross";
-        gpsElement.querySelector(".icon").innerText = "❌";
-        gpsElement.children[1].innerText = "GPS Not Enabled";
-        gpsElement.querySelector(".message").innerText =
-          "Enable GPS on your device.";
+      // Update GPS status (only if location is allowed)
+      if (locationAllowed) {
+        if (gpsStatus === true) {
+          gpsElement.querySelector(".icon").className = "icon tick";
+          gpsElement.querySelector(".icon").innerText = "✔️";
+          gpsElement.children[1].innerText = "GPS Enabled";
+          gpsElement.querySelector(".message").innerText = ""; // Clear message
+        } else {
+          gpsElement.querySelector(".icon").className = "icon cross";
+          gpsElement.querySelector(".icon").innerText = "❌";
+          gpsElement.children[1].innerText = "GPS Not Enabled";
+          gpsElement.querySelector(".message").innerText =
+            "Enable GPS on your device.";
+        }
       }
     }
 
