@@ -29,37 +29,62 @@
       font-weight: bold;
     }
 
-    /* List Styles */
-    ul {
-      list-style-type: none;
-      padding: 0;
+    /* Progress Bar Styles */
+    .container {
+      max-width: 600px;
+      margin: 50px auto;
+      text-align: center;
     }
-    li {
-      margin: 10px 0;
-      font-size: 18px;
+    .progress-container {
+      display: flex;
+      justify-content: space-between;
+      position: relative;
+      margin-bottom: 30px;
+    }
+    .progress-container::before {
+      content: "";
+      background-color: #e0e0e0;
+      position: absolute;
+      top: 50%;
+      left: 0;
+      transform: translateY(-50%);
+      height: 4px;
+      width: 100%;
+      z-index: -1;
+    }
+    .progress {
+      background-color: #3498db;
+      position: absolute;
+      top: 50%;
+      left: 0;
+      transform: translateY(-50%);
+      height: 4px;
+      width: 0%;
+      z-index: -1;
+      transition: width 0.3s ease;
+    }
+    .circle {
+      background-color: #fff;
+      color: #999;
+      border-radius: 50%;
+      border: 3px solid #e0e0e0;
+      width: 30px;
+      height: 30px;
       display: flex;
       align-items: center;
+      justify-content: center;
+      transition: border-color 0.3s ease;
     }
-    li span.icon {
-      margin-right: 10px;
-      font-size: 20px;
-    }
-    .tick {
-      color: green;
-    }
-    .cross {
-      color: red;
-    }
-    .loading {
-      color: orange;
+    .circle.active {
+      border-color: #3498db;
     }
 
     /* Button Style */
     #start-button {
       display: block;
-      margin: 50px auto;
-      padding: 15px 30px;
-      font-size: 18px;
+      margin: 20px auto;
+      padding: 10px 20px;
+      font-size: 16px;
       cursor: pointer;
     }
 
@@ -67,29 +92,22 @@
     .message {
       font-size: 14px;
       color: #666;
-      margin-top: 5px;
-      margin-left: 30px;
-    }
-
-    /* Hide GPS section initially */
-    #gps-status {
-      display: none;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <button id="start-button">Start Speedometer</button>
-
-  <ul>
-    <li id="location-status">
-      <span class="icon cross">❌</span> Location Access: <span>Not allowed</span>
-      <div class="message">Allow Location access in your browser settings.</div>
-    </li>
-    <li id="gps-status">
-      <span class="icon cross">❌</span> GPS: <span>Not enabled</span>
-      <div class="message">Enable GPS on your device.</div>
-    </li>
-  </ul>
+  <div class="container">
+    <div class="progress-container">
+      <div class="progress" id="progress"></div>
+      <div class="circle active">Click Start</div>
+      <div class="circle">Location Access</div>
+      <div class="circle">Enable GPS</div>
+      <div class="circle">Ready</div>
+    </div>
+    <div class="message" id="status-message">Click the button to start.</div>
+    <button id="start-button">Start Speedometer</button>
+  </div>
 
   <div id="error-popup">
     <p id="error-message"></p>
@@ -100,6 +118,11 @@
     // Global variables for GPS watch and timeout
     let gpsWatchId = null;
     let gpsTimeout = null;
+
+    // Progress bar elements
+    const progress = document.getElementById("progress");
+    const circles = document.querySelectorAll(".circle");
+    const statusMessage = document.getElementById("status-message");
 
     // Displays an error popup
     function showErrorPopup(message) {
@@ -112,45 +135,29 @@
       document.getElementById("error-popup").style.display = "none";
     }
 
-    // Updates the UI for both Location Access and GPS status.
-    function updateStatus(locationAllowed, gpsStatus) {
-      const locationElement = document.getElementById("location-status");
-      const gpsElement = document.getElementById("gps-status");
-
-      // Update Location Access status
-      if (locationAllowed) {
-        locationElement.querySelector(".icon").className = "icon tick";
-        locationElement.querySelector(".icon").innerText = "✔️";
-        locationElement.children[1].innerText = "Location Access Allowed";
-        locationElement.querySelector(".message").innerText = ""; // Clear message
-
-        // Show GPS section
-        gpsElement.style.display = "flex";
-      } else {
-        locationElement.querySelector(".icon").className = "icon cross";
-        locationElement.querySelector(".icon").innerText = "❌";
-        locationElement.children[1].innerText = "Location Access Not Allowed";
-        locationElement.querySelector(".message").innerText =
-          "Allow Location access in your browser settings.";
-
-        // Hide GPS section
-        gpsElement.style.display = "none";
-      }
-
-      // Update GPS status (only if location is allowed)
-      if (locationAllowed) {
-        if (gpsStatus === true) {
-          gpsElement.querySelector(".icon").className = "icon tick";
-          gpsElement.querySelector(".icon").innerText = "✔️";
-          gpsElement.children[1].innerText = "GPS Enabled";
-          gpsElement.querySelector(".message").innerText = ""; // Clear message
+    // Updates the progress bar and circles
+    function updateProgress(currActive) {
+      circles.forEach((circle, i) => {
+        if (i < currActive) {
+          circle.classList.add("active");
         } else {
-          gpsElement.querySelector(".icon").className = "icon cross";
-          gpsElement.querySelector(".icon").innerText = "❌";
-          gpsElement.children[1].innerText = "GPS Not Enabled";
-          gpsElement.querySelector(".message").innerText =
-            "Enable GPS on your device.";
+          circle.classList.remove("active");
         }
+      });
+
+      const actives = document.querySelectorAll(".active");
+      const width = ((actives.length - 1) / (circles.length - 1)) * 100;
+      progress.style.width = `${width}%`;
+
+      // Update status message
+      if (currActive === 1) {
+        statusMessage.innerText = "Click the button to start.";
+      } else if (currActive === 2) {
+        statusMessage.innerText = "Allow Location access in your browser settings.";
+      } else if (currActive === 3) {
+        statusMessage.innerText = "Enable GPS on your device.";
+      } else if (currActive === 4) {
+        statusMessage.innerText = "Ready to use the speedometer.";
       }
     }
 
@@ -161,19 +168,19 @@
         gpsWatchId = navigator.geolocation.watchPosition(
           function (position) {
             console.log("GPS position update:", position);
-            // GPS is working; update status
-            updateStatus(true, true);
+            // GPS is working; update progress
+            updateProgress(4); // Ready
             // Reset the timeout: if no new update arrives in 5 seconds, mark GPS as not enabled.
             if (gpsTimeout) clearTimeout(gpsTimeout);
             gpsTimeout = setTimeout(function () {
               console.log("No GPS update in 5 seconds, marking as not enabled");
-              updateStatus(true, false);
+              updateProgress(3); // Enable GPS
             }, 5000);
           },
           function (error) {
             console.log("GPS error callback:", error);
             // An error (or loss of signal) means GPS is not enabled.
-            updateStatus(true, false);
+            updateProgress(3); // Enable GPS
           },
           { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
         );
@@ -188,7 +195,7 @@
         navigator.permissions.query({ name: "geolocation" }).then(function (permissionStatus) {
           if (permissionStatus.state === "granted") {
             console.log("Location permission granted");
-            updateStatus(true, false); // GPS status is unknown initially
+            updateProgress(2); // Location Access
             startGPSWatch();
           } else if (permissionStatus.state === "prompt") {
             console.log("Location permission prompt. Triggering permission request.");
@@ -196,32 +203,34 @@
             navigator.geolocation.getCurrentPosition(
               function (position) {
                 console.log("User granted location permission", position);
-                updateStatus(true, false); // GPS status is unknown initially
+                updateProgress(2); // Location Access
                 startGPSWatch();
               },
               function (error) {
                 console.log("User denied location permission or error", error);
                 if (error.code === error.PERMISSION_DENIED) {
-                  updateStatus(false, false);
+                  updateProgress(1); // Click Start
+                  statusMessage.innerText = "Allow Location access in your browser settings.";
                 } else {
-                  updateStatus(true, false);
+                  updateProgress(2); // Location Access
                 }
               },
               { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
             );
           } else if (permissionStatus.state === "denied") {
             console.log("Location permission denied");
-            updateStatus(false, false);
+            updateProgress(1); // Click Start
+            statusMessage.innerText = "Allow Location access in your browser settings.";
           }
 
           // Listen for any changes in permission status
           permissionStatus.onchange = function () {
             console.log("Permission changed to:", this.state);
             if (this.state === "granted") {
-              updateStatus(true, false); // GPS status is unknown initially
+              updateProgress(2); // Location Access
               startGPSWatch();
             } else {
-              updateStatus(false, false);
+              updateProgress(1); // Click Start
             }
           };
         });
@@ -230,15 +239,16 @@
         navigator.geolocation.getCurrentPosition(
           function (position) {
             console.log("User granted location permission", position);
-            updateStatus(true, false); // GPS status is unknown initially
+            updateProgress(2); // Location Access
             startGPSWatch();
           },
           function (error) {
             console.log("User denied location permission or error", error);
             if (error.code === error.PERMISSION_DENIED) {
-              updateStatus(false, false);
+              updateProgress(1); // Click Start
+              statusMessage.innerText = "Allow Location access in your browser settings.";
             } else {
-              updateStatus(true, false);
+              updateProgress(2); // Location Access
             }
           },
           { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
